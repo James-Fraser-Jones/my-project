@@ -4,6 +4,7 @@ import Lib
 import System.Directory (doesFileExist)
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Database.HDBC
+import Data.Functor
 
 main :: IO ()
 main = someFunc
@@ -30,9 +31,34 @@ createDB name = do
   conn <- connectSqlite3 name --connect to the database
   createAuctionTable conn
   add <- addItem conn
-  execute add [toSql (5 :: Int), toSql (2 :: Int), toSql "Wooden Chair", toSql (4.50 :: Double), toSql (2.44 :: Double), toSql (10.21 :: Double), toSql (22 :: Int), toSql (1 :: Int)]
+  execute add $ hsToDb ex1
   commit conn --commit changes
   disconnect conn --good to be explicit about disconnecting at the end
+
+-------------------------------------------------------------------------------------------------------
+--Converting between Haskell and DB records
+
+data Item = Item {
+  vendor :: Int,
+  lotNumber :: Int,
+  description :: String,
+  reserve :: Maybe Double,
+  preSaleBids :: Maybe Double,
+  salePrice :: Maybe Double,
+  purchaser :: Maybe Int,
+  saleID :: Maybe Int
+}
+
+hsToDb :: Item -> [SqlValue]
+hsToDb (Item a b c d e f g h) = [toSql a, toSql b, toSql c, toSql d, toSql e, toSql f, toSql g, toSql h]
+
+dbToHs :: [SqlValue] -> Item
+dbToHs [a,b,c,d,e,f,g,h] = Item (fromSql a) (fromSql b) (fromSql c) (fromSql d) (fromSql e) (fromSql f) (fromSql g) (fromSql h)
+
+ex1 :: Item
+ex1 = Item 5 4 "Metal Chair" (Just 3.0) Nothing (Just 4.45) (Just 5) (Just 22)
+
+-------------------------------------------------------------------------------------------------------
 
 {-
 Stack tutorial:
