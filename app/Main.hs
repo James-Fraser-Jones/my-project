@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Lib
@@ -5,6 +7,7 @@ import System.Directory (doesFileExist)
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Database.HDBC
 import Data.Functor
+import Data.Text
 
 main :: IO ()
 main = someFunc
@@ -26,14 +29,14 @@ createAuctionTable = flip runRaw $ "CREATE TABLE " ++ auctionTableName ++ " (Ven
 addItem :: IConnection conn => conn -> IO Statement
 addItem = flip prepare $ "INSERT INTO " ++ auctionTableName ++ " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 
-createDB :: String -> IO ()
+createDB :: FilePath -> IO ()
 createDB name = do
-  conn <- connectSqlite3 name --connect to the database
-  createAuctionTable conn
-  add <- addItem conn
-  execute add $ hsToDb ex1
-  commit conn --commit changes
-  disconnect conn --good to be explicit about disconnecting at the end
+  conn <- connectSqlite3 name   --connect to the database
+  createAuctionTable conn       --create new table
+  add <- addItem conn           --prepare statement for adding new items
+  execute add $ hsToDb ex1      --add the ex1 item
+  commit conn                   --commit changes
+  disconnect conn               --good to be explicit about disconnecting at the end
 
 -------------------------------------------------------------------------------------------------------
 --Converting between Haskell and DB records
@@ -41,13 +44,13 @@ createDB name = do
 data Item = Item {
   vendor :: Int,
   lotNumber :: Int,
-  description :: String,
+  description :: Text,
   reserve :: Maybe Double,
   preSaleBids :: Maybe Double,
   salePrice :: Maybe Double,
   purchaser :: Maybe Int,
   saleID :: Maybe Int
-}
+} deriving Show
 
 hsToDb :: Item -> [SqlValue]
 hsToDb (Item a b c d e f g h) = [toSql a, toSql b, toSql c, toSql d, toSql e, toSql f, toSql g, toSql h]
