@@ -2,11 +2,11 @@
 
 module Lib where
 
-import System.Directory (doesFileExist)
 import Database.HDBC.Sqlite3
 import Database.HDBC
 import qualified Data.Text as T
 import System.Console.Haskeline
+import System.Directory (doesFileExist)
 
 import Data.Functor
 --import Control.Monad.Reader
@@ -50,13 +50,19 @@ createTables conn = do
   runRaw conn createItemsTableSql --create items table
   commit conn                     --commit changes
 
-addItem :: IConnection conn => conn -> Item -> IO ()
-addItem conn item = do
-  addItem' <- prepare conn addItemSql --prepare statement for adding new items
-  execute addItem' $ itemToSql item   --add the item
+addItem :: IConnection conn => Item -> conn -> IO ()
+addItem item conn = do
+  addItem' <- prepare conn addItemSql --prepare statement for adding new items (SQL errors either occour here PREPARE)
+  execute addItem' $ itemToSql item   --add the item                           (Or occour here EXECUTE)     
   commit conn                         --commit changes
 
-addItem' a b c d e f g = flip addItem (Item a b c d e f g)
+addItem2 a b c d e f g = addItem (Item a b c d e f g)
+
+addItems :: IConnection conn => [Item] -> conn -> IO ()
+addItems items conn = do
+  addItems' <- prepare conn addItemSql        --prepare statement for adding new items
+  executeMany addItems' $ itemToSql <$> items --add the items
+  commit conn                                 --commit changes
 
 -------------------------------------------------------------------------------------------------------
 --Converting between Haskell and DB records
@@ -77,5 +83,6 @@ itemToSql (Item a b c d e f g) = [toSql a, toSql b, toSql c, toSql d, toSql e, t
 sqlToItem :: [SqlValue] -> Item
 sqlToItem [a,b,c,d,e,f,g] = Item (fromSql a) (fromSql b) (fromSql c) (fromSql d) (fromSql e) (fromSql f) (fromSql g)
 
-ex1 :: Item
+ex1, ex2 :: Item
 ex1 = Item 5 4 "Helicopter Ride" (Just 3.32) Nothing (Just 2) (Just 22.41)
+ex2 = Item 33 23 "Brass Spoon" Nothing (Just 12.04) (Just 47) (Just 62.53)
