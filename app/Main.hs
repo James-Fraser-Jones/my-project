@@ -2,6 +2,17 @@ module Main where
 
 import Lib
 
+import Database.HDBC.Sqlite3
+import Database.HDBC
+import qualified Data.Text as T
+import System.Console.Haskeline
+import System.Directory (doesFileExist)
+import Data.Functor
+import System.Random
+
+import Data.IntMap.Lazy (IntMap)
+import qualified Data.IntMap.Lazy as IntMap
+
 main :: IO ()
 main = someFunc
 
@@ -29,8 +40,10 @@ Library packages come from stackage by default in order to prevent dependency he
 Always search for library package documentation on stackage website and ensure that
 the version is the same as the once you're using.
 
-Adding language extensions to stack ghci:
+Adding language extensions to stack GHCi:
 "stack ghci --ghci-options "-XOverloadedStrings"
+
+Using imports from Lib.hs in GHCi: just use the same imports in Main.hs
 -}
 
 {-
