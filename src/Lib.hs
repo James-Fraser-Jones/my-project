@@ -1,6 +1,81 @@
-module Lib
-    ( someFunc
-    ) where
+{-# LANGUAGE OverloadedStrings #-}
+
+module Lib where
+
+import System.Directory (doesFileExist)
+import Database.HDBC.Sqlite3
+import Database.HDBC
+import qualified Data.Text as T
+import System.Console.Haskeline
+
+import Data.Functor
+--import Control.Monad.Reader
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
+
+--------------------------------------------------------------------------------------------------------
+--Premade Sql Commands
+
+type SqlCommand = String
+
+createItemsTableSql :: SqlCommand
+createItemsTableSql =
+  "CREATE TABLE `items` (\
+  \ `item` INTEGER,\
+  \ `lot_number` INTEGER NOT NULL CHECK(lot_number > 0) UNIQUE,\
+  \ `vendor` INTEGER NOT NULL CHECK(vendor > 0),\
+  \ `description` TEXT NOT NULL,\
+  \ `reserve` REAL CHECK(reserve > 0),\
+  \ `pre_bid` REAL CHECK(pre_bid > 0),\
+  \ `purchaser` INTEGER CHECK(purchaser > 0),\
+  \ `sale_price` REAL CHECK(sale_price > 0),\
+  \ PRIMARY KEY(`item`) )"
+
+addItemSql :: SqlCommand
+addItemSql =
+  "INSERT INTO `items` (`lot_number`, `vendor`, `description`, `reserve`, `pre_bid`, `purchaser`, `sale_price`) VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+--------------------------------------------------------------------------------------------------------
+--Database Actions
+
+connect :: FilePath -> IO Connection
+connect = connectSqlite3
+
+discon :: IConnection conn => conn -> IO ()
+discon = disconnect
+
+createTables :: IConnection conn => conn -> IO ()
+createTables conn = do
+  runRaw conn createItemsTableSql --create items table
+  commit conn                     --commit changes
+
+addItem :: IConnection conn => conn -> Item -> IO ()
+addItem conn item = do
+  addItem' <- prepare conn addItemSql --prepare statement for adding new items
+  execute addItem' $ itemToSql item   --add the item
+  commit conn                         --commit changes
+
+addItem' a b c d e f g = flip addItem (Item a b c d e f g)
+
+-------------------------------------------------------------------------------------------------------
+--Converting between Haskell and DB records
+
+data Item = Item {
+  lotNumber :: Int,
+  vendor :: Int,
+  description :: T.Text,
+  reserve :: Maybe Double,
+  preBid :: Maybe Double,
+  purchaser :: Maybe Int,
+  salePrice :: Maybe Double
+} deriving Show
+
+itemToSql :: Item -> [SqlValue]
+itemToSql (Item a b c d e f g) = [toSql a, toSql b, toSql c, toSql d, toSql e, toSql f, toSql g]
+
+sqlToItem :: [SqlValue] -> Item
+sqlToItem [a,b,c,d,e,f,g] = Item (fromSql a) (fromSql b) (fromSql c) (fromSql d) (fromSql e) (fromSql f) (fromSql g)
+
+ex1 :: Item
+ex1 = Item 5 4 "Helicopter Ride" (Just 3.32) Nothing (Just 2) (Just 22.41)
