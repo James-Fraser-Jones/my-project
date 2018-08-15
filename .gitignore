@@ -1,3 +1,5 @@
 .stack-work/
 my-project.cabal
+auction.cus
+test1.db
 *~

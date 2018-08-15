@@ -1,20 +1,40 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Main where
 
 import Lib
 
 import Database.HDBC.Sqlite3
 import Database.HDBC
+
 import qualified Data.Text as T
+import Data.Text.Binary
+import Data.Binary
+import GHC.Generics
+
 import System.Console.Haskeline
 import System.Directory (doesFileExist)
-import Data.Functor
 import System.Random
+
+import Data.Functor
+import Data.Maybe
+import Data.Either
 
 import Data.IntMap.Lazy (IntMap)
 import qualified Data.IntMap.Lazy as IntMap
 
 main :: IO ()
-main = someFunc
+main = do
+  table <- tableR 5
+  encodeFile "auction.cus" table
+  table2 <- decodeFileOrFail @ Table "auction.cus"
+  putStrLn $ show table
+  putStrLn $ show table2
+  putStrLn $ if fromRight (Table []) table2 == table
+             then "Success"
+             else "Failure"
 
 -------------------------------------------------------------------------------------------------------
 
@@ -41,7 +61,7 @@ Always search for library package documentation on stackage website and ensure t
 the version is the same as the once you're using.
 
 Adding language extensions to stack GHCi:
-"stack ghci --ghci-options "-XOverloadedStrings"
+stack ghci --ghci-options "-XOverloadedStrings"
 
 Using imports from Lib.hs in GHCi: just use the same imports in Main.hs
 -}

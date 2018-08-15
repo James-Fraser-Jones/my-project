@@ -1,20 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Lib where
 
 import Database.HDBC.Sqlite3
 import Database.HDBC
+
 import qualified Data.Text as T
+import Data.Text.Binary
+import Data.Binary
+import GHC.Generics
+
 import System.Console.Haskeline
 import System.Directory (doesFileExist)
-import Data.Functor
 import System.Random
+
+import Data.Functor
+import Data.Maybe
+import Data.Either
 
 import Data.IntMap.Lazy (IntMap)
 import qualified Data.IntMap.Lazy as IntMap
-
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
 
 --------------------------------------------------------------------------------------------------------
 --Premade Sql Commands
@@ -67,11 +74,15 @@ addItems items conn = do
 
 addRand :: IConnection conn => Int -> conn -> IO ()
 addRand n conn = do
-  items <- itemsR n
+  Table (items) <- tableR n
   addItems items conn
 
 -------------------------------------------------------------------------------------------------------
---Converting between Haskell and DB records
+--Converting between Haskell records, DB records and files
+
+newtype Table = Table {unTable :: [Item]} deriving (Show, Generic, Eq)
+
+instance Binary Table --these are derived generically
 
 data Item = Item {
   lotNum :: Int,
@@ -81,7 +92,9 @@ data Item = Item {
   preBid :: Maybe Double,
   purch :: Maybe Int,
   sPrice :: Maybe Double
-} deriving Show
+} deriving (Show, Generic, Eq)
+
+instance Binary Item
 
 itemToSql :: Item -> [SqlValue]
 itemToSql (Item a b c d e f g) = [toSql a, toSql b, toSql c, toSql d, toSql e, toSql f, toSql g]
@@ -89,15 +102,11 @@ itemToSql (Item a b c d e f g) = [toSql a, toSql b, toSql c, toSql d, toSql e, t
 sqlToItem :: [SqlValue] -> Item
 sqlToItem [a,b,c,d,e,f,g] = Item (fromSql a) (fromSql b) (fromSql c) (fromSql d) (fromSql e) (fromSql f) (fromSql g)
 
-ex1, ex2 :: Item
-ex1 = Item 5 4 "Helicopter Ride" (Just 3.32) Nothing (Just 2) (Just 22.41)
-ex2 = Item 33 23 "Brass Spoon" Nothing (Just 12.04) (Just 47) (Just 62.53)
-
 -------------------------------------------------------------------------------------------------------
 --Creating random records
 
-itemsR :: Int -> IO [Item]
-itemsR n = mapM itemR [1..n]
+tableR :: Int -> IO Table
+tableR n = Table <$> (mapM itemR [1..n])
 
 itemR :: Int -> IO Item
 itemR lot = do
